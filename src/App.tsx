@@ -199,16 +199,45 @@ function Iterations() {
 function Tasks() {
   const { activeProjectId } = useWorkspace()
   const [tasks, setTasks] = useState<Row[]>([])
+  const [stories, setStories] = useState<Row[]>([])
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({ title: '', description: '', status: 'todo', priority: 'medium', assignee_id: '', user_story_id: '', estimate_hours: '' })
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [refresh, setRefresh] = useState(0)
   useEffect(() => {
     if (!supabase) return
     const client = supabase
     const load = () => void client.from('tasks').select('*').order('created_at', { ascending: false }).then(({ data, error: queryError }) => { setTasks((data || []).filter((row) => belongsToProject(row, activeProjectId))); if (queryError) setError(queryError.message) })
+    void client.from('user_stories').select('*').then(({ data, error: queryError }) => { setStories((data || []).filter((row) => belongsToProject(row, activeProjectId))); if (queryError) setError(queryError.message) })
     load()
     const channel = client.channel('xpflow-tasks').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, load).subscribe()
     return () => { void client.removeChannel(channel) }
   }, [refresh, activeProjectId])
+  async function createTask(event: FormEvent) {
+    event.preventDefault()
+    if (!supabase || !form.title.trim()) return
+    setBusy(true)
+    setError('')
+    const payload: Row = {
+      title: form.title.trim(),
+      description: form.description.trim() || null,
+      status: form.status,
+      priority: form.priority,
+      assignee_id: form.assignee_id.trim() || null,
+      user_story_id: form.user_story_id || null,
+      estimate_hours: form.estimate_hours ? Number(form.estimate_hours) : null,
+    }
+    if (activeProjectId) payload.project_id = activeProjectId
+    const { error: insertError } = await supabase.from('tasks').insert(payload)
+    setBusy(false)
+    if (insertError) setError(`No se pudo crear la tarea. Verifica columnas/RLS: ${insertError.message}`)
+    else {
+      setForm({ title: '', description: '', status: 'todo', priority: 'medium', assignee_id: '', user_story_id: '', estimate_hours: '' })
+      setShowForm(false)
+      setRefresh((value) => value + 1)
+    }
+  }
   async function updateStatus(task: Row, status: string) {
     if (!supabase || task.id === undefined) return
     const { error: updateError } = await supabase.from('tasks').update({ status }).eq('id', task.id)
@@ -217,7 +246,7 @@ function Tasks() {
   }
 
   const columns = [{ key: 'todo', label: 'Por hacer' }, { key: 'in_progress', label: 'En progreso' }, { key: 'done', label: 'Completado' }]
-  return <><div className="page-intro"><div><p className="eyebrow">Flujo de trabajo</p><h2>Tablero Kanban</h2><p className="muted">Actualiza el estado de tus tareas directamente en Supabase.</p></div><a className="button button-primary" href="/app/projects"><Plus size={16} /> Gestionar proyectos</a></div>{error && <Notice message={error} />}<div className="kanban-board">{columns.map((column) => <section className="kanban-column" key={column.key}><div className="kanban-heading"><span>{column.label}</span><b>{tasks.filter((task) => normalizeStatus(task.status) === column.key).length}</b></div>{tasks.filter((task) => normalizeStatus(task.status) === column.key).map((task) => <article className="kanban-card" key={String(task.id)}><strong>{String(task.title || task.name || task.description || 'Tarea sin título')}</strong><small>{String(task.priority || 'Sin prioridad')}</small><select value={normalizeStatus(task.status)} onChange={(event) => void updateStatus(task, event.target.value)} aria-label="Cambiar estado"><option value="todo">Por hacer</option><option value="in_progress">En progreso</option><option value="done">Completado</option></select></article>)}</section>)}</div></>
+  return <><div className="page-intro"><div><p className="eyebrow">Flujo de trabajo</p><h2>Tablero Kanban</h2><p className="muted">Cada tarea queda asociada al proyecto, historia, responsable y estimación.</p></div><button className="button button-primary" onClick={() => setShowForm((value) => !value)}><Plus size={16} /> Nueva tarea</button></div>{error && <Notice message={error} />}{showForm && <form className="panel project-form" onSubmit={createTask}><h3>Registrar tarea trazable</h3><div className="form-grid"><label>Título<input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ej. Implementar login" /></label><label>Descripción<input value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Qué debe hacerse" /></label><label>Responsable (UUID)<input value={form.assignee_id} onChange={(event) => setForm({ ...form, assignee_id: event.target.value })} placeholder="UUID del usuario" /></label><label>Historia relacionada<select value={form.user_story_id} onChange={(event) => setForm({ ...form, user_story_id: event.target.value })}><option value="">Sin historia</option>{stories.map((story) => <option key={String(story.id)} value={String(story.id)}>{String(story.title || story.name || story.id)}</option>)}</select></label><label>Prioridad<select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></label><label>Estimación (horas)<input type="number" min="0" step="0.5" value={form.estimate_hours} onChange={(event) => setForm({ ...form, estimate_hours: event.target.value })} /></label></div><div className="form-actions"><button type="button" className="button button-quiet" onClick={() => setShowForm(false)}>Cancelar</button><button className="button button-primary" disabled={busy}>{busy ? 'Guardando...' : 'Guardar tarea'}</button></div></form>}<div className="kanban-board">{columns.map((column) => <section className="kanban-column" key={column.key}><div className="kanban-heading"><span>{column.label}</span><b>{tasks.filter((task) => normalizeStatus(task.status) === column.key).length}</b></div>{tasks.filter((task) => normalizeStatus(task.status) === column.key).map((task) => <article className="kanban-card" key={String(task.id)}><strong>{String(task.title || task.name || task.description || 'Tarea sin título')}</strong><small>ID: {String(task.id || 'sin ID')}</small><small>Responsable: {String(task.assignee_id || 'Sin asignar')}</small><small>Historia: {String(task.user_story_id || 'Sin historia')} · {String(task.estimate_hours || 0)} h</small><select value={normalizeStatus(task.status)} onChange={(event) => void updateStatus(task, event.target.value)} aria-label="Cambiar estado"><option value="todo">Por hacer</option><option value="in_progress">En progreso</option><option value="done">Completado</option></select></article>)}</section>)}</div></>
 }
 
 function normalizeStatus(value: unknown): string {
