@@ -384,7 +384,17 @@ function CrudModule({ title, description, table, fields }: { title: string; desc
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [refresh, setRefresh] = useState(0)
-  useEffect(() => { if (!supabase) return; void supabase.from(table).select('*').limit(50).then(({ data, error: queryError }) => { setRows((data || []).filter((row) => belongsToProject(row, activeProjectId))); if (queryError) setError(queryError.message) }) }, [table, refresh, activeProjectId])
+  useEffect(() => {
+    if (!supabase) return
+    void supabase.from(table).select('*').limit(50).then(({ data, error: queryError }) => {
+      setRows((data || []).filter((row) => belongsToProject(row, activeProjectId)))
+      if (queryError) {
+        setError(queryError.message.includes(`Could not find the table 'public.${table}'`)
+          ? `Falta crear la tabla ${table}. Ejecuta la migración 20261114170000_xp_quality_collaboration.sql en Supabase → SQL Editor.`
+          : queryError.message)
+      }
+    })
+  }, [table, refresh, activeProjectId])
   async function create(event: FormEvent) {
     event.preventDefault()
     if (!supabase) return
