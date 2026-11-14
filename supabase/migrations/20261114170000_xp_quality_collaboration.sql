@@ -57,7 +57,7 @@ create index if not exists bugs_project_idx on public.bugs(project_id);
 create index if not exists comments_entity_idx on public.comments(entity_type, entity_id);
 create index if not exists xp_practices_project_idx on public.xp_practices(project_id);
 
-create or replace function public.is_project_member(target_project_id uuid)
+create or replace function public.is_project_member(p_project_id uuid)
 returns boolean
 language sql
 security definer
@@ -65,10 +65,10 @@ set search_path = public
 as $$
   select exists (
     select 1 from public.projects p
-    where p.id = target_project_id and p.owner_id = auth.uid()
+    where p.id = p_project_id and p.owner_id = auth.uid()
   ) or exists (
     select 1 from public.project_members pm
-    where pm.project_id = target_project_id and pm.user_id = auth.uid()
+    where pm.project_id = p_project_id and pm.user_id = auth.uid()
   );
 $$;
 
