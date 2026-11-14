@@ -1,5 +1,8 @@
 -- Incremental XP support tables. Existing tables are not modified or dropped.
 
+alter table public.user_stories
+  add column if not exists acceptance_criteria text;
+
 create table if not exists public.test_cases (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
@@ -74,11 +77,15 @@ alter table public.bugs enable row level security;
 alter table public.comments enable row level security;
 alter table public.xp_practices enable row level security;
 
+drop policy if exists "Project members can manage test cases" on public.test_cases;
 create policy "Project members can manage test cases" on public.test_cases
   for all using (public.is_project_member(project_id)) with check (public.is_project_member(project_id));
+drop policy if exists "Project members can manage bugs" on public.bugs;
 create policy "Project members can manage bugs" on public.bugs
   for all using (public.is_project_member(project_id)) with check (public.is_project_member(project_id));
+drop policy if exists "Project members can manage comments" on public.comments;
 create policy "Project members can manage comments" on public.comments
   for all using (public.is_project_member(project_id)) with check (public.is_project_member(project_id));
+drop policy if exists "Project members can manage XP practices" on public.xp_practices;
 create policy "Project members can manage XP practices" on public.xp_practices
   for all using (public.is_project_member(project_id)) with check (public.is_project_member(project_id));
