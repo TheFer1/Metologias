@@ -162,12 +162,14 @@ function Dashboard() {
 }
 
 function Projects() {
+  const { setActiveProjectId } = useWorkspace()
   const [projects, setProjects] = useState<Row[]>([])
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [seeding, setSeeding] = useState<string | null>(null)
   const [refresh, setRefresh] = useState(0)
   useEffect(() => {
     if (!supabase) return
@@ -186,7 +188,19 @@ function Projects() {
     if (insertError) setError(insertError.message)
     else { setName(''); setDescription(''); setShowForm(false); setRefresh((value) => value + 1) }
   }
-  return <><div className="page-intro"><div><p className="eyebrow">Workspace</p><h2>Proyectos</h2><p className="muted">Organiza productos, equipos e iteraciones desde un solo lugar.</p></div><button className="button button-primary" onClick={() => setShowForm((value) => !value)}><Plus size={16} /> Nuevo proyecto</button></div>{error && <Notice message={error} />}{showForm && <form className="panel project-form" onSubmit={createProject}><h3>Crear proyecto</h3><div className="form-grid"><label>Nombre<input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. Plataforma web" /></label><label>Descripción<input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Objetivo del proyecto" /></label></div><div className="form-actions"><button type="button" className="button button-quiet" onClick={() => setShowForm(false)}>Cancelar</button><button className="button button-primary" disabled={busy}>{busy ? 'Guardando...' : 'Guardar proyecto'}</button></div></form>}<section className="projects-grid">{projects.map((project) => <article className="project-card" key={String(project.id)}><div className="project-card-top"><span className="project-icon"><FolderKanban size={17} /></span><span className="project-status">Activo</span></div><h3>{String(project.name || project.title || 'Proyecto sin nombre')}</h3><p>{String(project.description || 'Sin descripción')}</p><div className="project-card-footer"><span><Users size={14} /> colaboradores</span><a href="/app/backlog">Abrir proyecto <ChevronRight size={14} /></a></div></article>)}{projects.length === 0 && <div className="panel empty-wide"><EmptyState title="Crea tu primer proyecto" text="Los proyectos se guardan directamente en tu tabla projects de Supabase." link="#" /></div>}</section></>
+  async function seedPlan(projectId: string) {
+    if (!supabase) return
+    setSeeding(projectId)
+    setError('')
+    const { error: seedError } = await supabase.rpc('seed_xp_plan', { target_project_id: projectId })
+    setSeeding(null)
+    if (seedError) setError(seedError.message)
+    else {
+      setActiveProjectId(projectId)
+      setError('Plan XP cargado: 2 iteraciones, 5 historias y tareas trazables.')
+    }
+  }
+  return <><div className="page-intro"><div><p className="eyebrow">Workspace</p><h2>Proyectos</h2><p className="muted">Organiza productos, equipos e iteraciones desde un solo lugar.</p></div><button className="button button-primary" onClick={() => setShowForm((value) => !value)}><Plus size={16} /> Nuevo proyecto</button></div>{error && <Notice message={error} />}{showForm && <form className="panel project-form" onSubmit={createProject}><h3>Crear proyecto</h3><div className="form-grid"><label>Nombre<input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Ej. Plataforma web" /></label><label>Descripción<input value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Objetivo del proyecto" /></label></div><div className="form-actions"><button type="button" className="button button-quiet" onClick={() => setShowForm(false)}>Cancelar</button><button className="button button-primary" disabled={busy}>{busy ? 'Guardando...' : 'Guardar proyecto'}</button></div></form>}<section className="projects-grid">{projects.map((project) => <article className="project-card" key={String(project.id)}><div className="project-card-top"><span className="project-icon"><FolderKanban size={17} /></span><span className="project-status">Activo</span></div><h3>{String(project.name || project.title || 'Proyecto sin nombre')}</h3><p>{String(project.description || 'Sin descripción')}</p><div className="project-card-footer"><span><Users size={14} /> colaboradores</span><button className="button button-quiet" disabled={seeding === String(project.id)} onClick={() => void seedPlan(String(project.id))}>{seeding === String(project.id) ? 'Cargando...' : 'Cargar plan XP'}</button><a href="/app/backlog">Abrir proyecto <ChevronRight size={14} /></a></div></article>)}{projects.length === 0 && <div className="panel empty-wide"><EmptyState title="Crea tu primer proyecto" text="Los proyectos se guardan directamente en tu tabla projects de Supabase." link="#" /></div>}</section></>
 }
 
 function Stories() {
