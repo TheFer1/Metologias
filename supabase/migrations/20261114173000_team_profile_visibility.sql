@@ -38,3 +38,13 @@ select
   coalesce(nullif(u.raw_user_meta_data ->> 'full_name', ''), split_part(coalesce(u.email, ''), '@', 1))
 from auth.users u
 on conflict (id) do nothing;
+
+update public.profiles p
+set full_name = coalesce(
+  nullif(u.raw_user_meta_data ->> 'full_name', ''),
+  nullif(split_part(coalesce(u.email, ''), '@', 1), ''),
+  'Usuario'
+)
+from auth.users u
+where p.id = u.id
+  and nullif(trim(p.full_name), '') is null;
