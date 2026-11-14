@@ -45,6 +45,12 @@ h1 span { color: #2f6cf6; }
 .access-form label { display: block; color: #b7c4da; font-size: 11px; margin-bottom: 8px; }.access-form input { width: 100%; min-width: 0; border: 1px solid #364762; border-radius: 7px; padding: 12px; color: #fff; background: #223452; font: inherit; font-size: 12px; outline: none; }.access-form input:focus { border-color: #7098ff; }.access-form .button { flex: 0 0 auto; padding: 12px 15px; }
 .form-message, .setup-note { font-size: 11px !important; color: #a8d9c2 !important; }.setup-note code { color: #d3ddf2; }
 .form-grid select { display: block; width: 100%; margin-top: 6px; padding: 11px; border: 1px solid #dfe5ef; border-radius: 7px; color: #718098; background: #fff; font: inherit; font-size: 12px; }
+.record-row-button { width: 100%; display: flex; justify-content: space-between; gap: 12px; border: 0; padding: 10px 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.record-row-button:hover strong { color: #2f6cf6; }
+.record-detail { padding: 8px 0 12px; color: #718098; font-size: 12px; line-height: 1.5; }
+.record-detail p { margin: 5px 0; }
+.record-detail label { display: block; margin-top: 10px; color: #66748f; font-size: 11px; font-weight: 700; }
+.record-detail select { display: block; width: 100%; margin-top: 5px; padding: 8px; border: 1px solid #dfe5ef; border-radius: 7px; color: #718098; background: #fff; font: inherit; font-size: 12px; }
 .auth-tabs { display: flex; gap: 5px; margin-bottom: 16px; border-bottom: 1px solid #364762; }.auth-tab { border: 0; padding: 8px 10px; color: #8e9db7; background: transparent; font: inherit; font-size: 11px; cursor: pointer; }.auth-tab.active { color: #fff; border-bottom: 2px solid #78a1ff; }.access-form > input { display: block; width: 100%; margin-bottom: 12px; }.access-form > label { margin-top: 9px; }.auth-submit { width: 100%; margin-top: 6px; }
 footer { display: flex; justify-content: space-between; padding: 30px 0; color: #a2aec0; font-size: 10px; }
 @media (max-width: 850px) { .app-shell { padding: 0 22px; }.hero { grid-template-columns: 1fr; gap: 45px; padding-top: 45px; }.workspace-preview { transform: none; }.features, .access-card { grid-template-columns: 1fr; }.features { gap: 10px; }.access-card { gap: 22px; } }
