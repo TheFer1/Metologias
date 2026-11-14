@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useLocation } from 'react-router-dom'
 import {
   BarChart3, Boxes, CheckCircle2, ChevronRight, ClipboardList, FolderKanban,
@@ -10,6 +10,20 @@ import { isSupabaseConfigured, supabase } from './lib/supabase'
 type Session = NonNullable<Awaited<ReturnType<NonNullable<typeof supabase>['auth']['getSession']>>['data']['session']>
 type Row = Record<string, unknown>
 type Section = 'dashboard' | 'projects' | 'team' | 'backlog' | 'kanban' | 'iterations' | 'quality' | 'metrics' | 'practices'
+type WorkspaceContextValue = { activeProjectId: string; setActiveProjectId: (id: string) => void; projects: Row[] }
+const workspaceContext = createContext<WorkspaceContextValue | null>(null)
+
+function useWorkspace() {
+  const context = useContext(workspaceContext)
+  if (!context) throw new Error('Workspace context is unavailable')
+  return context
+}
+
+function belongsToProject(row: Row, projectId: string) {
+  if (!projectId) return true
+  const relation = row.project_id ?? row.projectId
+  return relation === undefined || String(relation) === projectId
+}
 
 const navigation: { id: Section; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -93,17 +107,31 @@ function Workspace({ session }: { session: Session }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [projects, setProjects] = useState<Row[]>([])
+  const [activeProjectId, setActiveProjectId] = useState(() => window.sessionStorage.getItem('xpflow-project') || '')
   const current = (location.pathname.split('/')[2] || 'dashboard') as Section
   const userEmail = session.user.email || 'Usuario'
+  useEffect(() => {
+    if (!supabase) return
+    void supabase.from('projects').select('*').order('created_at', { ascending: false }).then(({ data }) => {
+      const available = data || []
+      setProjects(available)
+      if (!activeProjectId && available[0]?.id !== undefined) setActiveProjectId(String(available[0].id))
+    })
+  }, [activeProjectId])
+  useEffect(() => {
+    if (activeProjectId) window.sessionStorage.setItem('xpflow-project', activeProjectId)
+  }, [activeProjectId])
 
   async function signOut() {
     if (supabase) await supabase.auth.signOut()
   }
 
-  return <div className="workspace"><aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}><div className="sidebar-brand"><a className="brand" href="/app"><span className="brand-mark"><Rocket size={17} /></span><span>XP<span className="brand-accent">Flow</span></span></a><button className="mobile-close" onClick={() => setMobileOpen(false)}><X size={18} /></button></div><p className="nav-caption">Espacio de trabajo</p><nav>{navigation.map(({ id, label, icon: Icon }) => <button key={id} className={current === id ? 'nav-item active' : 'nav-item'} onClick={() => { navigate(`/app/${id}`); setMobileOpen(false) }}><Icon size={17} /><span>{label}</span>{current === id && <ChevronRight className="nav-arrow" size={14} />}</button>)}</nav><div className="sidebar-bottom"><button className="nav-item"><Settings2 size={17} /><span>Configuración</span></button><div className="user-card"><div className="avatar">{userEmail.slice(0, 1).toUpperCase()}</div><div><strong>{userEmail.split('@')[0]}</strong><small>{userEmail}</small></div><button onClick={signOut} title="Cerrar sesión"><LogIn size={14} /></button></div></div></aside><div className="workspace-main"><header className="workspace-header"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={20} /></button><div><p className="header-kicker">Espacio de trabajo</p><h1>{navigation.find((item) => item.id === current)?.label || 'Dashboard'}</h1></div><div className="header-actions"><span className="online-label"><span className="status-dot" /> En línea</span><div className="avatar">{userEmail.slice(0, 1).toUpperCase()}</div></div></header><main className="workspace-content"><Routes><Route index element={<Navigate to="dashboard" replace />} /><Route path="dashboard" element={<Dashboard />} />  <Route path="projects" element={<Projects />} /><Route path="team" element={<Team />} /><Route path="backlog" element={<Stories />} /><Route path="kanban" element={<Tasks />} /><Route path="iterations" element={<Iterations />} /><Route path="quality" element={<CrudModule title="Pruebas y bugs" description="Registra evidencias de calidad y defectos del producto." table="bugs" fields={[{ key: 'title', label: 'Título', required: true }, { key: 'description', label: 'Descripción' }, { key: 'status', label: 'Estado' }]} />} /><Route path="metrics" element={<Metrics />} /><Route path="practices" element={<CrudModule title="Prácticas XP" description="Registra pair programming, TDD, refactorización e integración continua." table="xp_practices" fields={[{ key: 'practice', label: 'Práctica', required: true }, { key: 'status', label: 'Estado' }, { key: 'notes', label: 'Notas' }]} />} /></Routes></main></div></div>
+  return <workspaceContext.Provider value={{ activeProjectId, setActiveProjectId, projects }}><div className="workspace"><aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}><div className="sidebar-brand"><a className="brand" href="/app"><span className="brand-mark"><Rocket size={17} /></span><span>XP<span className="brand-accent">Flow</span></span></a><button className="mobile-close" onClick={() => setMobileOpen(false)}><X size={18} /></button></div><p className="nav-caption">Espacio de trabajo</p><nav>{navigation.map(({ id, label, icon: Icon }) => <button key={id} className={current === id ? 'nav-item active' : 'nav-item'} onClick={() => { navigate(`/app/${id}`); setMobileOpen(false) }}><Icon size={17} /><span>{label}</span>{current === id && <ChevronRight className="nav-arrow" size={14} />}</button>)}</nav><div className="sidebar-bottom"><button className="nav-item"><Settings2 size={17} /><span>Configuración</span></button><div className="user-card"><div className="avatar">{userEmail.slice(0, 1).toUpperCase()}</div><div><strong>{userEmail.split('@')[0]}</strong><small>{userEmail}</small></div><button onClick={signOut} title="Cerrar sesión"><LogIn size={14} /></button></div></div></aside><div className="workspace-main"><header className="workspace-header"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={20} /></button><div><p className="header-kicker">Espacio de trabajo</p><h1>{navigation.find((item) => item.id === current)?.label || 'Dashboard'}</h1></div><div className="header-actions"><select className="project-selector" value={activeProjectId} onChange={(event) => setActiveProjectId(event.target.value)} aria-label="Proyecto activo"><option value="">Todos los proyectos</option>{projects.map((project) => <option key={String(project.id)} value={String(project.id)}>{String(project.name || project.title || 'Proyecto')}</option>)}</select><span className="online-label"><span className="status-dot" /> En línea</span><div className="avatar">{userEmail.slice(0, 1).toUpperCase()}</div></div></header><main className="workspace-content"><Routes><Route index element={<Navigate to="dashboard" replace />} /><Route path="dashboard" element={<Dashboard />} />  <Route path="projects" element={<Projects />} /><Route path="team" element={<Team />} /><Route path="backlog" element={<Stories />} /><Route path="kanban" element={<Tasks />} /><Route path="iterations" element={<Iterations />} /><Route path="quality" element={<CrudModule title="Pruebas y bugs" description="Registra evidencias de calidad y defectos del producto." table="bugs" fields={[{ key: 'title', label: 'Título', required: true }, { key: 'description', label: 'Descripción' }, { key: 'status', label: 'Estado' }]} />} /><Route path="metrics" element={<Metrics />} /><Route path="practices" element={<CrudModule title="Prácticas XP" description="Registra pair programming, TDD, refactorización e integración continua." table="xp_practices" fields={[{ key: 'practice', label: 'Práctica', required: true }, { key: 'status', label: 'Estado' }, { key: 'notes', label: 'Notas' }]} />} /></Routes></main></div></div></workspaceContext.Provider>
 }
 
 function Dashboard() {
+  const { activeProjectId } = useWorkspace()
   const [projects, setProjects] = useState<Row[]>([])
   const [tasks, setTasks] = useState<Row[]>([])
   const [stories, setStories] = useState<Row[]>([])
@@ -116,9 +144,9 @@ function Dashboard() {
       if (!active) return
       const firstError = projectsResult.error || tasksResult.error || storiesResult.error
       if (firstError) setError(firstError.message)
-      setProjects(projectsResult.data || [])
-      setTasks(tasksResult.data || [])
-      setStories(storiesResult.data || [])
+      setProjects((projectsResult.data || []).filter((row) => belongsToProject(row, activeProjectId)))
+      setTasks((tasksResult.data || []).filter((row) => belongsToProject(row, activeProjectId)))
+      setStories((storiesResult.data || []).filter((row) => belongsToProject(row, activeProjectId)))
     })
     load()
     const channel = client.channel('xpflow-dashboard')
@@ -127,7 +155,7 @@ function Dashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'user_stories' }, load)
       .subscribe()
     return () => { active = false; void client.removeChannel(channel) }
-  }, [])
+  }, [activeProjectId])
   const completedTasks = tasks.filter((task) => ['done', 'completed', 'completado'].includes(String(task.status).toLowerCase())).length
   return <><div className="page-intro"><div><p className="eyebrow">Resumen operativo</p><h2>Hola, equipo 👋</h2><p className="muted">Aquí tienes el pulso de tus proyectos y el avance actual.</p></div><a className="button button-primary" href="/app/projects"><Plus size={16} /> Nuevo proyecto</a></div>{error && <Notice message={`No se pudieron cargar todos los datos: ${error}`} /> }<div className="stat-grid"><Stat label="Proyectos" value={projects.length} icon={<FolderKanban />} tone="blue" /><Stat label="Historias" value={stories.length} icon={<ClipboardList />} tone="purple" /><Stat label="Tareas" value={tasks.length} icon={<Boxes />} tone="orange" /><Stat label="Tareas completadas" value={completedTasks} icon={<CheckCircle2 />} tone="green" /></div><div className="dashboard-grid"><section className="panel"><div className="panel-heading"><div><h3>Proyectos recientes</h3><p>Datos sincronizados desde Supabase</p></div><a href="/app/projects">Ver todos</a></div>{projects.length === 0 ? <EmptyState title="Aún no tienes proyectos" text="Crea tu primer proyecto para empezar a colaborar." link="/app/projects" /> : <div className="project-list">{projects.slice(0, 5).map((project) => <div className="project-row" key={String(project.id)}><span className="project-icon"><FolderKanban size={16} /></span><div><strong>{String(project.name || project.title || 'Proyecto sin nombre')}</strong><small>{String(project.description || 'Sin descripción')}</small></div><ChevronRight size={16} /></div>)}</div>}</section><section className="panel progress-panel"><div className="panel-heading"><div><h3>Ritmo del equipo</h3><p>Indicadores del espacio actual</p></div></div><div className="progress-ring"><strong>{tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0}%</strong><span>avance de tareas</span></div><div className="mini-metrics"><span><b>{stories.length}</b> historias</span><span><b>{projects.length}</b> proyectos</span></div></section></div></>
 }
@@ -169,17 +197,18 @@ function Iterations() {
 }
 
 function Tasks() {
+  const { activeProjectId } = useWorkspace()
   const [tasks, setTasks] = useState<Row[]>([])
   const [error, setError] = useState('')
   const [refresh, setRefresh] = useState(0)
   useEffect(() => {
     if (!supabase) return
     const client = supabase
-    const load = () => void client.from('tasks').select('*').order('created_at', { ascending: false }).then(({ data, error: queryError }) => { setTasks(data || []); if (queryError) setError(queryError.message) })
+    const load = () => void client.from('tasks').select('*').order('created_at', { ascending: false }).then(({ data, error: queryError }) => { setTasks((data || []).filter((row) => belongsToProject(row, activeProjectId))); if (queryError) setError(queryError.message) })
     load()
     const channel = client.channel('xpflow-tasks').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, load).subscribe()
     return () => { void client.removeChannel(channel) }
-  }, [refresh])
+  }, [refresh, activeProjectId])
   async function updateStatus(task: Row, status: string) {
     if (!supabase || task.id === undefined) return
     const { error: updateError } = await supabase.from('tasks').update({ status }).eq('id', task.id)
@@ -199,6 +228,7 @@ function normalizeStatus(value: unknown): string {
 }
 
 function Team() {
+  const { activeProjectId } = useWorkspace()
   const [members, setMembers] = useState<Row[]>([])
   const [form, setForm] = useState({ project_id: '', user_id: '', role: 'developer' })
   const [error, setError] = useState('')
@@ -206,8 +236,8 @@ function Team() {
   useEffect(() => {
     if (!supabase) return
     const client = supabase
-    void client.from('project_members').select('*').limit(100).then(({ data, error: queryError }) => { setMembers(data || []); if (queryError) setError(queryError.message) })
-  }, [refresh])
+    void client.from('project_members').select('*').limit(100).then(({ data, error: queryError }) => { setMembers((data || []).filter((row) => belongsToProject(row, activeProjectId))); if (queryError) setError(queryError.message) })
+  }, [refresh, activeProjectId])
   async function addMember(event: FormEvent) {
     event.preventDefault()
     if (!supabase) return
@@ -219,29 +249,32 @@ function Team() {
 }
 
 function Metrics() {
+  const { activeProjectId } = useWorkspace()
   const [tasks, setTasks] = useState<Row[]>([])
   const [stories, setStories] = useState<Row[]>([])
   const [iterations, setIterations] = useState<Row[]>([])
   const [error, setError] = useState('')
-  useEffect(() => { if (!supabase) return; void Promise.all([supabase.from('tasks').select('*'), supabase.from('user_stories').select('*'), supabase.from('iterations').select('*')]).then(([taskResult, storyResult, iterationResult]) => { setTasks(taskResult.data || []); setStories(storyResult.data || []); setIterations(iterationResult.data || []); const firstError = taskResult.error || storyResult.error || iterationResult.error; if (firstError) setError(firstError.message) }) }, [])
+  useEffect(() => { if (!supabase) return; void Promise.all([supabase.from('tasks').select('*'), supabase.from('user_stories').select('*'), supabase.from('iterations').select('*')]).then(([taskResult, storyResult, iterationResult]) => { setTasks((taskResult.data || []).filter((row) => belongsToProject(row, activeProjectId))); setStories((storyResult.data || []).filter((row) => belongsToProject(row, activeProjectId))); setIterations((iterationResult.data || []).filter((row) => belongsToProject(row, activeProjectId))); const firstError = taskResult.error || storyResult.error || iterationResult.error; if (firstError) setError(firstError.message) }) }, [activeProjectId])
   const completed = tasks.filter((task) => normalizeStatus(task.status) === 'done').length
   const completion = tasks.length ? Math.round((completed / tasks.length) * 100) : 0
   return <><div className="page-intro"><div><p className="eyebrow">Visibilidad XP</p><h2>Métricas del equipo</h2><p className="muted">Indicadores calculados a partir de tus datos persistidos.</p></div></div>{error && <Notice message={error} />}<div className="metric-cards"><Stat label="Avance de tareas" value={completion} icon={<CheckCircle2 />} tone="green" /><Stat label="Historias del backlog" value={stories.length} icon={<ClipboardList />} tone="purple" /><Stat label="Iteraciones" value={iterations.length} icon={<IterationCw />} tone="blue" /><Stat label="Tareas completadas" value={completed} icon={<Boxes />} tone="orange" /></div><section className="panel metric-summary"><h3>Velocidad actual</h3><div className="metric-bar"><span style={{ width: `${completion}%` }} /></div><p>{completion}% de las tareas registradas están completadas.</p></section></>
 }
 
 function CrudModule({ title, description, table, fields }: { title: string; description: string; table: string; fields: { key: string; label: string; required?: boolean }[] }) {
+  const { activeProjectId } = useWorkspace()
   const [rows, setRows] = useState<Row[]>([])
   const [error, setError] = useState('')
   const [form, setForm] = useState<Row>({})
   const [showForm, setShowForm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [refresh, setRefresh] = useState(0)
-  useEffect(() => { if (!supabase) return; void supabase.from(table).select('*').limit(50).then(({ data, error: queryError }) => { setRows(data || []); if (queryError) setError(queryError.message) }) }, [table, refresh])
+  useEffect(() => { if (!supabase) return; void supabase.from(table).select('*').limit(50).then(({ data, error: queryError }) => { setRows((data || []).filter((row) => belongsToProject(row, activeProjectId))); if (queryError) setError(queryError.message) }) }, [table, refresh, activeProjectId])
   async function create(event: FormEvent) {
     event.preventDefault()
     if (!supabase) return
     setBusy(true); setError('')
-    const { error: insertError } = await supabase.from(table).insert(form)
+    const payload = activeProjectId ? { ...form, project_id: activeProjectId } : form
+    const { error: insertError } = await supabase.from(table).insert(payload)
     setBusy(false)
     if (insertError) setError(insertError.message)
     else { setForm({}); setShowForm(false); setRefresh((value) => value + 1) }
