@@ -189,7 +189,34 @@ function Projects() {
 }
 
 function Stories() {
-  return <CrudModule title="Historias de usuario" description="Prioriza el backlog y registra el valor de cada historia." table="user_stories" fields={[{ key: 'title', label: 'Título', required: true }, { key: 'description', label: 'Descripción' }, { key: 'priority', label: 'Prioridad' }]} />
+  const { activeProjectId } = useWorkspace()
+  const [stories, setStories] = useState<Row[]>([])
+  const [form, setForm] = useState({ title: '', description: '', priority: 'medium', status: 'backlog', acceptance_criteria: '' })
+  const [expanded, setExpanded] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [refresh, setRefresh] = useState(0)
+  useEffect(() => {
+    if (!supabase) return
+    void supabase.from('user_stories').select('*').order('created_at', { ascending: false }).then(({ data, error: queryError }) => {
+      setStories((data || []).filter((story) => belongsToProject(story, activeProjectId)))
+      if (queryError) setError(queryError.message)
+    })
+  }, [activeProjectId, refresh])
+  async function createStory(event: FormEvent) {
+    event.preventDefault()
+    if (!supabase || !form.title.trim()) return
+    setBusy(true)
+    setError('')
+    const payload: Row = { title: form.title.trim(), description: form.description.trim() || null, priority: form.priority, status: form.status, acceptance_criteria: form.acceptance_criteria.trim() || null }
+    if (activeProjectId) payload.project_id = activeProjectId
+    const { error: insertError } = await supabase.from('user_stories').insert(payload)
+    setBusy(false)
+    if (insertError) setError(`No se pudo guardar la historia. Verifica columnas/RLS: ${insertError.message}`)
+    else { setForm({ title: '', description: '', priority: 'medium', status: 'backlog', acceptance_criteria: '' }); setShowForm(false); setRefresh((value) => value + 1) }
+  }
+  return <><div className="page-intro"><div><p className="eyebrow">Product backlog</p><h2>Historias de usuario</h2><p className="muted">Entiende qué necesita el usuario y por qué aporta valor al producto.</p></div><button className="button button-primary" onClick={() => setShowForm((value) => !value)}><Plus size={16} /> Nueva historia</button></div>{error && <Notice message={error} />}{showForm && <form className="panel project-form" onSubmit={createStory}><h3>Crear historia de usuario</h3><div className="form-grid"><label>Título<input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ej. Como usuario quiero..." /></label><label>Prioridad<select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}><option value="low">Baja</option><option value="medium">Media</option><option value="high">Alta</option><option value="urgent">Urgente</option></select></label><label>Descripción<textarea required value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Describe la necesidad del usuario y el valor esperado" /></label><label>Criterios de aceptación<textarea value={form.acceptance_criteria} onChange={(event) => setForm({ ...form, acceptance_criteria: event.target.value })} placeholder="Condiciones que deben cumplirse" /></label></div><div className="form-actions"><button type="button" className="button button-quiet" onClick={() => setShowForm(false)}>Cancelar</button><button className="button button-primary" disabled={busy}>{busy ? 'Guardando...' : 'Guardar historia'}</button></div></form>}<section className="story-list">{stories.length === 0 && <div className="panel empty-wide"><EmptyState title="Tu backlog está vacío" text="Crea una historia para describir el valor que debe entregar el equipo." link="#" /></div>}{stories.map((story, index) => { const id = String(story.id || index); const isExpanded = expanded === id; return <article className={`story-card ${isExpanded ? 'story-expanded' : ''}`} key={id}><div className="story-card-summary"><span className="story-number">US-{String(index + 1).padStart(3, '0')}</span><div className="story-main"><h3>{String(story.title || story.name || 'Historia sin título')}</h3><p>{String(story.description || 'Esta historia todavía no tiene descripción.')}</p><div className="story-meta"><span className={`priority priority-${String(story.priority || 'medium').toLowerCase()}`}>{String(story.priority || 'Media')}</span><span className="story-status">{String(story.status || 'Backlog')}</span><span>Proyecto: {String(story.project_id || activeProjectId || 'General')}</span></div></div><button className="story-toggle" onClick={() => setExpanded(isExpanded ? null : id)}>{isExpanded ? 'Ocultar detalle' : 'Ver detalle'} <ChevronRight size={15} /></button></div>{isExpanded && <div className="story-detail"><div><strong>Descripción completa</strong><p>{String(story.description || 'Sin descripción registrada.')}</p></div><div><strong>Criterios de aceptación</strong><p>{String(story.acceptance_criteria || 'Aún no se han definido criterios de aceptación.')}</p></div><small>ID: {id}</small></div>}</article>})}</section></>
 }
 
 function Iterations() {
