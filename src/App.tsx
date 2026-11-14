@@ -21,7 +21,8 @@ function useWorkspace() {
 
 function belongsToProject(row: Row, projectId: string) {
   if (!projectId) return true
-  const relation = row.project_id ?? row.projectId
+  const story = row.user_stories as Row | undefined
+  const relation = row.project_id ?? row.projectId ?? story?.project_id
   return relation === undefined || String(relation) === projectId
 }
 
@@ -242,7 +243,7 @@ function Tasks() {
   useEffect(() => {
     if (!supabase) return
     const client = supabase
-    const load = () => void client.from('tasks').select('*').order('created_at', { ascending: false }).then(({ data, error: queryError }) => { setTasks((data || []).filter((row) => belongsToProject(row, activeProjectId))); if (queryError) setError(queryError.message) })
+    const load = () => void client.from('tasks').select('*, user_stories!inner(project_id, title)').order('created_at', { ascending: false }).then(({ data, error: queryError }) => { setTasks((data || []).filter((row) => belongsToProject(row, activeProjectId))); if (queryError) setError(queryError.message) })
     void client.from('user_stories').select('*').then(({ data, error: queryError }) => { setStories((data || []).filter((row) => belongsToProject(row, activeProjectId))); if (queryError) setError(queryError.message) })
     load()
     const channel = client.channel('xpflow-tasks').on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, load).subscribe()
