@@ -47,4 +47,7 @@ set full_name = coalesce(
 )
 from auth.users u
 where p.id = u.id
-  and nullif(trim(p.full_name), '') is null;
+  and (
+    nullif(trim(p.full_name), '') is null
+    or trim(p.full_name) ~* '^[0-9a-f]{8}-[0-9a-f-]{27,}$'
+  );
