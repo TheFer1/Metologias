@@ -133,7 +133,7 @@ function Workspace({ session }: { session: Session }) {
     if (supabase) await supabase.auth.signOut()
   }
 
-  return <workspaceContext.Provider value={{ activeProjectId, setActiveProjectId, projects }}><div className="workspace"><aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}><div className="sidebar-brand"><a className="brand" href="/app"><span className="brand-mark"><Rocket size={17} /></span><span>XP<span className="brand-accent">Flow</span></span></a><button className="mobile-close" onClick={() => setMobileOpen(false)}><X size={18} /></button></div><p className="nav-caption">Espacio de trabajo</p><nav>{navigation.map(({ id, label, icon: Icon }) => <button key={id} className={current === id ? 'nav-item active' : 'nav-item'} onClick={() => { navigate(`/app/${id}`); setMobileOpen(false) }}><Icon size={17} /><span>{label}</span>{current === id && <ChevronRight className="nav-arrow" size={14} />}</button>)}</nav><div className="sidebar-bottom"><button className="nav-item"><Settings2 size={17} /><span>Configuración</span></button><div className="user-card"><div className="avatar">{userEmail.slice(0, 1).toUpperCase()}</div><div><strong>{userEmail.split('@')[0]}</strong><small>{userEmail}</small></div><button onClick={signOut} title="Cerrar sesión"><LogIn size={14} /></button></div></div></aside><div className="workspace-main"><header className="workspace-header"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={20} /></button><div><p className="header-kicker">Espacio de trabajo</p><h1>{navigation.find((item) => item.id === current)?.label || 'Dashboard'}</h1></div><div className="header-actions"><select className="project-selector" value={activeProjectId} onChange={(event) => setActiveProjectId(event.target.value)} aria-label="Proyecto activo"><option value="">Todos los proyectos</option>{projects.map((project) => <option key={String(project.id)} value={String(project.id)}>{String(project.name || project.title || 'Proyecto')}</option>)}</select><span className="online-label"><span className="status-dot" /> En línea</span><div className="avatar">{userEmail.slice(0, 1).toUpperCase()}</div></div></header><main className="workspace-content"><Routes><Route index element={<Navigate to="dashboard" replace />} /><Route path="dashboard" element={<Dashboard />} />    <Route path="projects" element={<Projects />} /><Route path="team" element={<Team />} /><Route path="backlog" element={<Stories />} /><Route path="kanban" element={<Tasks />} /><Route path="iterations" element={<Iterations />} /><Route path="quality" element={<Quality />} /><Route path="metrics" element={<Metrics />} /><Route path="practices" element={<CrudModule title="Prácticas XP" description="Registra pair programming, TDD, refactorización e integración continua." table="xp_practices" fields={[{ key: 'practice', label: 'Práctica', required: true }, { key: 'status', label: 'Estado' }, { key: 'notes', label: 'Notas' }]} />} /></Routes></main></div></div></workspaceContext.Provider>
+  return <workspaceContext.Provider value={{ activeProjectId, setActiveProjectId, projects }}><div className="workspace"><aside className={`sidebar ${mobileOpen ? 'sidebar-open' : ''}`}><div className="sidebar-brand"><a className="brand" href="/app"><span className="brand-mark"><Rocket size={17} /></span><span>XP<span className="brand-accent">Flow</span></span></a><button className="mobile-close" onClick={() => setMobileOpen(false)}><X size={18} /></button></div><p className="nav-caption">Espacio de trabajo</p><nav>{navigation.map(({ id, label, icon: Icon }) => <button key={id} className={current === id ? 'nav-item active' : 'nav-item'} onClick={() => { navigate(`/app/${id}`); setMobileOpen(false) }}><Icon size={17} /><span>{label}</span>{current === id && <ChevronRight className="nav-arrow" size={14} />}</button>)}</nav><div className="sidebar-bottom"><button className="nav-item"><Settings2 size={17} /><span>Configuración</span></button><div className="user-card"><div className="avatar">{userEmail.slice(0, 1).toUpperCase()}</div><div><strong>{userEmail.split('@')[0]}</strong><small>{userEmail}</small></div><button onClick={signOut} title="Cerrar sesión"><LogIn size={14} /></button></div></div></aside><div className="workspace-main"><header className="workspace-header"><button className="mobile-menu" onClick={() => setMobileOpen(true)}><Menu size={20} /></button><div><p className="header-kicker">Espacio de trabajo</p><h1>{navigation.find((item) => item.id === current)?.label || 'Dashboard'}</h1></div><div className="header-actions"><select className="project-selector" value={activeProjectId} onChange={(event) => setActiveProjectId(event.target.value)} aria-label="Proyecto activo"><option value="">Todos los proyectos</option>{projects.map((project) => <option key={String(project.id)} value={String(project.id)}>{String(project.name || project.title || 'Proyecto')}</option>)}</select><span className="online-label"><span className="status-dot" /> En línea</span><div className="avatar">{userEmail.slice(0, 1).toUpperCase()}</div></div></header><main className="workspace-content"><Routes><Route index element={<Navigate to="dashboard" replace />} /><Route path="dashboard" element={<Dashboard />} />    <Route path="projects" element={<Projects />} /><Route path="team" element={<Team />} /><Route path="backlog" element={<Stories />} /><Route path="kanban" element={<Tasks />} /><Route path="iterations" element={<Iterations />} /><Route path="quality" element={<Quality />} /><Route path="metrics" element={<Metrics />} /><Route path="practices" element={<Practices />} /></Routes></main></div></div></workspaceContext.Provider>
 }
 
 function Dashboard() {
@@ -406,6 +406,84 @@ function Metrics() {
   const completed = tasks.filter((task) => normalizeStatus(task.status) === 'completed').length
   const completion = tasks.length ? Math.round((completed / tasks.length) * 100) : 0
   return <><div className="page-intro"><div><p className="eyebrow">Visibilidad XP</p><h2>Métricas del equipo</h2><p className="muted">Indicadores calculados a partir de tus datos persistidos.</p></div></div>{error && <Notice message={error} />}<div className="metric-cards"><Stat label="Avance de tareas" value={completion} icon={<CheckCircle2 />} tone="green" /><Stat label="Historias del backlog" value={stories.length} icon={<ClipboardList />} tone="purple" /><Stat label="Iteraciones" value={iterations.length} icon={<IterationCw />} tone="blue" /><Stat label="Tareas completadas" value={completed} icon={<Boxes />} tone="orange" /></div><section className="panel metric-summary"><h3>Velocidad actual</h3><div className="metric-bar"><span style={{ width: `${completion}%` }} /></div><p>{completion}% de las tareas registradas están completadas.</p></section></>
+}
+
+const xpPhases = [
+  { key: 'planning', label: 'Planificación', description: 'Historias, alcance y estimaciones', tone: 'blue' },
+  { key: 'design', label: 'Diseño', description: 'UML, arquitectura y criterios', tone: 'purple' },
+  { key: 'development', label: 'Desarrollo', description: 'Construcción e integración', tone: 'orange' },
+  { key: 'testing', label: 'Pruebas', description: 'Validación, bugs y evidencias', tone: 'green' },
+]
+
+function Practices() {
+  const { activeProjectId } = useWorkspace()
+  const [tasks, setTasks] = useState<Row[]>([])
+  const [stories, setStories] = useState<Row[]>([])
+  const [iterations, setIterations] = useState<Row[]>([])
+  const [profiles, setProfiles] = useState<Row[]>([])
+  const [form, setForm] = useState({ title: '', description: '', story_id: '', iteration_id: '', xp_phase: 'planning', assigned_to: '', estimated_hours: '' })
+  const [showForm, setShowForm] = useState(false)
+  const [error, setError] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [refresh, setRefresh] = useState(0)
+
+  useEffect(() => {
+    if (!supabase) return
+    void Promise.all([
+      supabase.from('tasks').select('*, user_stories!inner(project_id, title, iteration_id)').order('created_at', { ascending: false }),
+      supabase.from('user_stories').select('id, title, project_id').order('title'),
+      supabase.from('iterations').select('id, name, project_id').order('created_at'),
+      supabase.from('profiles').select('id, full_name').order('full_name'),
+    ]).then(([tasksResult, storiesResult, iterationsResult, profilesResult]) => {
+      setTasks((tasksResult.data || []).filter((task) => belongsToProject(task, activeProjectId)))
+      setStories((storiesResult.data || []).filter((story) => belongsToProject(story, activeProjectId)))
+      setIterations((iterationsResult.data || []).filter((iteration) => belongsToProject(iteration, activeProjectId)))
+      setProfiles(profilesResult.data || [])
+      const firstError = tasksResult.error || storiesResult.error || iterationsResult.error || profilesResult.error
+      if (firstError) setError(firstError.message)
+    })
+  }, [activeProjectId, refresh])
+
+  async function createTask(event: FormEvent) {
+    event.preventDefault()
+    if (!supabase || !activeProjectId || !form.title.trim() || !form.story_id) {
+      setError('Selecciona una historia y un proyecto antes de crear la actividad.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    const { error: insertError } = await supabase.from('tasks').insert({
+      title: form.title.trim(),
+      description: form.description.trim() || null,
+      story_id: form.story_id,
+      iteration_id: form.iteration_id || null,
+      xp_phase: form.xp_phase,
+      assigned_to: form.assigned_to || null,
+      estimated_hours: Number(form.estimated_hours) || 0,
+      status: 'pending',
+    })
+    setBusy(false)
+    if (insertError) setError(insertError.message)
+    else {
+      setForm({ title: '', description: '', story_id: '', iteration_id: '', xp_phase: 'planning', assigned_to: '', estimated_hours: '' })
+      setShowForm(false)
+      setRefresh((value) => value + 1)
+    }
+  }
+
+  async function updateTask(task: Row, changes: Row) {
+    if (!supabase || task.id === undefined) return
+    const { error: updateError } = await supabase.from('tasks').update(changes).eq('id', String(task.id))
+    if (updateError) setError(updateError.message)
+    else setTasks((current) => current.map((item) => item.id === task.id ? { ...item, ...changes } : item))
+  }
+
+  const getPhaseTasks = (phase: string) => tasks.filter((task) => String(task.xp_phase || '') === phase)
+  const unclassified = tasks.filter((task) => !xpPhases.some((phase) => phase.key === String(task.xp_phase || '')))
+  const completed = tasks.filter((task) => normalizeStatus(task.status) === 'completed').length
+  const completion = tasks.length ? Math.round((completed / tasks.length) * 100) : 0
+
+  return <><div className="page-intro"><div><p className="eyebrow">Método de trabajo</p><h2>Prácticas XP</h2><p className="muted">Relaciona cada incremento con sus actividades y controla lo que falta en cada fase.</p></div><button className="button button-primary" onClick={() => setShowForm((value) => !value)}><Plus size={16} /> Nueva actividad</button></div>{error && <Notice message={error} />}{showForm && <form className="panel project-form" onSubmit={createTask}><h3>Registrar actividad XP</h3><div className="form-grid"><label>Actividad<input required value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Ej. Elaborar diagrama de clases" /></label><label>Descripción<textarea value={form.description} onChange={(event) => setForm({ ...form, description: event.target.value })} placeholder="Qué debe entregar el equipo" /></label><label>Fase XP<select value={form.xp_phase} onChange={(event) => setForm({ ...form, xp_phase: event.target.value })}>{xpPhases.map((phase) => <option key={phase.key} value={phase.key}>{phase.label}</option>)}</select></label><label>Incremento / iteración<select value={form.iteration_id} onChange={(event) => setForm({ ...form, iteration_id: event.target.value })}><option value="">Sin iteración</option>{iterations.map((iteration) => <option key={String(iteration.id)} value={String(iteration.id)}>{String(iteration.name)}</option>)}</select></label><label>Historia relacionada<select required value={form.story_id} onChange={(event) => setForm({ ...form, story_id: event.target.value })}><option value="">Selecciona una historia</option>{stories.map((story) => <option key={String(story.id)} value={String(story.id)}>{String(story.title)}</option>)}</select></label><label>Responsable<select value={form.assigned_to} onChange={(event) => setForm({ ...form, assigned_to: event.target.value })}><option value="">Sin asignar</option>{profiles.map((profile) => <option key={String(profile.id)} value={String(profile.id)}>{displayName(profile)}</option>)}</select></label><label>Horas estimadas<input type="number" min="0" step="0.5" value={form.estimated_hours} onChange={(event) => setForm({ ...form, estimated_hours: event.target.value })} /></label></div><div className="form-actions"><button type="button" className="button button-quiet" onClick={() => setShowForm(false)}>Cancelar</button><button className="button button-primary" disabled={busy}>{busy ? 'Guardando...' : 'Guardar actividad'}</button></div></form>}<section className="phase-summary"><div className="phase-total"><strong>{completion}%</strong><span>avance general del incremento</span><div className="metric-bar"><span style={{ width: `${completion}%` }} /></div><small>{tasks.length - completed} tareas pendientes de {tasks.length}</small></div>{xpPhases.map((phase) => { const phaseTasks = getPhaseTasks(phase.key); const phaseDone = phaseTasks.filter((task) => normalizeStatus(task.status) === 'completed').length; const phasePercent = phaseTasks.length ? Math.round((phaseDone / phaseTasks.length) * 100) : 0; return <article className={`phase-card phase-${phase.tone}`} key={phase.key}><div className="phase-card-heading"><span>{phase.label}</span><b>{phaseTasks.length - phaseDone} pendientes</b></div><p>{phase.description}</p><strong>{phaseDone}/{phaseTasks.length}</strong><div className="metric-bar"><span style={{ width: `${phasePercent}%` }} /></div><small>{phasePercent}% completado</small></article>})}</section>{unclassified.length > 0 && <div className="notice">Hay {unclassified.length} tareas sin fase XP. Asígnalas desde este módulo o desde el tablero Kanban.</div>}<section className="phase-task-list">{xpPhases.map((phase) => <div className="panel phase-task-panel" key={phase.key}><div className="panel-heading"><div><h3>{phase.label}</h3><p>{getPhaseTasks(phase.key).length} actividades vinculadas</p></div></div>{getPhaseTasks(phase.key).length === 0 ? <p className="muted">No hay actividades registradas en esta fase.</p> : getPhaseTasks(phase.key).map((task) => <div className="phase-task-row" key={String(task.id)}><div><strong>{String(task.title)}</strong><small>{String(task.description || 'Sin descripción')} · {String(task.estimated_hours || 0)} h</small></div><select value={String(task.xp_phase || '')} onChange={(event) => void updateTask(task, { xp_phase: event.target.value })}>{xpPhases.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}</select><select value={String(task.assigned_to || '')} onChange={(event) => void updateTask(task, { assigned_to: event.target.value || null })}><option value="">Sin asignar</option>{profiles.map((profile) => <option key={String(profile.id)} value={String(profile.id)}>{displayName(profile)}</option>)}</select><select value={normalizeStatus(task.status)} onChange={(event) => void updateTask(task, { status: event.target.value })}><option value="pending">Pendiente</option><option value="in_progress">En progreso</option><option value="review">En revisión</option><option value="blocked">Bloqueada</option><option value="completed">Completada</option></select></div>)}</div>)}</section></>
 }
 
 function CrudModule({ title, description, table, fields }: { title: string; description: string; table: string; fields: { key: string; label: string; required?: boolean; type?: 'textarea'; placeholder?: string; assignment?: boolean; options?: { value: string; label: string }[] }[] }) {
