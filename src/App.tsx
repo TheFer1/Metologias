@@ -365,7 +365,7 @@ function Team() {
   const [members, setMembers] = useState<Row[]>([])
   const [projects, setProjects] = useState<Row[]>([])
   const [profiles, setProfiles] = useState<Row[]>([])
-  const [form, setForm] = useState({ project_id: '', user_id: '', role: 'developer' })
+  const [form, setForm] = useState({ project_id: '', user_id: '', role: 'programador' })
   const [error, setError] = useState('')
   const [refresh, setRefresh] = useState(0)
   useEffect(() => {
@@ -391,9 +391,23 @@ function Team() {
     if (!supabase) return
     const { error: insertError } = await supabase.from('project_members').insert(form)
     if (insertError) setError(insertError.message)
-    else { setForm({ project_id: '', user_id: '', role: 'developer' }); setRefresh((value) => value + 1) }
+    else { setForm({ project_id: '', user_id: '', role: 'programador' }); setRefresh((value) => value + 1) }
   }
-  return <><div className="page-intro"><div><p className="eyebrow">Colaboración</p><h2>Equipo</h2><p className="muted">Administra miembros y roles en tus proyectos.</p></div></div>{error && <Notice message={`Supabase: ${error}`} />}<form className="panel project-form" onSubmit={addMember}><h3>Agregar colaborador</h3><div className="form-grid"><label>Proyecto<select required value={form.project_id} onChange={(event) => setForm({ ...form, project_id: event.target.value })}><option value="">Selecciona un proyecto</option>{projects.map((project) => <option key={String(project.id)} value={String(project.id)}>{String(project.name || 'Proyecto sin nombre')}</option>)}</select></label><label>Usuario<select required value={form.user_id} onChange={(event) => setForm({ ...form, user_id: event.target.value })}><option value="">Selecciona un usuario</option>{profiles.map((profile) => <option key={String(profile.id)} value={String(profile.id)}>{displayName(profile)}</option>)}</select></label><label>Rol<select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}><option value="admin">Administrador</option><option value="project_leader">Líder de proyecto</option><option value="developer">Developer</option><option value="tester">Tester</option><option value="product_owner">Product Owner</option></select></label></div><div className="form-actions"><button className="button button-primary"><UserPlus size={16} /> Agregar miembro</button></div></form><section className="panel module-panel"><div className="module-icon"><Users size={25} /></div><h3>{members.length ? `${members.length} miembros registrados` : 'Sin miembros registrados'}</h3><p>Los miembros se consultan desde <code>project_members</code>. Para invitar por correo se requiere una Edge Function segura.</p>{members.length > 0 && <div className="record-list">{members.map((member, index) => <div key={String(member.id || index)}><strong>{displayName(profiles.find((profile) => String(profile.id) === String(member.user_id)))}</strong><small>{String(member.role || 'Sin rol')}</small></div>)}</div>}</section></>
+  async function updateMemberRole(member: Row, role: string) {
+    if (!supabase || member.id === undefined) return
+    const { error: updateError } = await supabase.from('project_members').update({ role }).eq('id', String(member.id))
+    if (updateError) setError(updateError.message)
+    else setMembers((current) => current.map((item) => item.id === member.id ? { ...item, role } : item))
+  }
+  const roles = [
+    { value: 'programador', label: 'Programador' },
+    { value: 'cliente', label: 'Cliente' },
+    { value: 'tester', label: 'Encargado de pruebas (Tester)' },
+    { value: 'tracker', label: 'Encargado de seguimiento (Tracker)' },
+    { value: 'coach', label: 'Entrenador (Coach)' },
+    { value: 'big_boss', label: 'Gestor (Big Boss)' },
+  ]
+  return <><div className="page-intro"><div><p className="eyebrow">Colaboración</p><h2>Equipo</h2><p className="muted">Administra miembros y roles en tus proyectos.</p></div></div>{error && <Notice message={`Supabase: ${error}`} />}<form className="panel project-form" onSubmit={addMember}><h3>Agregar colaborador</h3><div className="form-grid"><label>Proyecto<select required value={form.project_id} onChange={(event) => setForm({ ...form, project_id: event.target.value })}><option value="">Selecciona un proyecto</option>{projects.map((project) => <option key={String(project.id)} value={String(project.id)}>{String(project.name || 'Proyecto sin nombre')}</option>)}</select></label><label>Usuario<select required value={form.user_id} onChange={(event) => setForm({ ...form, user_id: event.target.value })}><option value="">Selecciona un usuario</option>{profiles.map((profile) => <option key={String(profile.id)} value={String(profile.id)}>{displayName(profile)}</option>)}</select></label><label>Rol<select value={form.role} onChange={(event) => setForm({ ...form, role: event.target.value })}>{roles.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label></div><div className="form-actions"><button className="button button-primary"><UserPlus size={16} /> Agregar miembro</button></div></form><section className="panel module-panel"><div className="module-icon"><Users size={25} /></div><h3>{members.length ? `${members.length} miembros registrados` : 'Sin miembros registrados'}</h3><p>Los miembros se consultan desde <code>project_members</code>. Puedes cambiar el rol directamente en cada miembro.</p>{members.length > 0 && <div className="record-list">{members.map((member, index) => <div className="team-member-row" key={String(member.id || index)}><strong>{displayName(profiles.find((profile) => String(profile.id) === String(member.user_id)))}</strong><select value={String(member.role || 'programador')} onChange={(event) => void updateMemberRole(member, event.target.value)} aria-label="Cambiar rol del miembro">{roles.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></div>)}</div>}</section></>
 }
 
 function Metrics() {
