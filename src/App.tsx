@@ -13,7 +13,7 @@ type Section = 'dashboard' | 'projects' | 'team' | 'backlog' | 'kanban' | 'itera
 type WorkspaceContextValue = { activeProjectId: string; setActiveProjectId: (id: string) => void; projects: Row[] }
 const workspaceContext = createContext<WorkspaceContextValue | null>(null)
 
-function displayName(profile: Row | undefined, fallback = 'Usuario sin nombre') {
+function displayName(profile: Row | undefined, fallback = 'Miembro del equipo') {
   const name = String(profile?.full_name || '').trim()
   return name && !/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(name) ? name : fallback
 }
