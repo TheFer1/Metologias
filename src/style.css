@@ -55,6 +55,9 @@ h1 span { color: #2f6cf6; }
 .form-grid textarea:focus { outline: none; border-color: #7098ff; box-shadow: 0 0 0 3px #7098ff1c; }
 .test-steps { margin: 6px 0 12px; padding-left: 22px; color: #718098; }
 .test-steps li { padding: 3px 0; }
+.story-detail-actions { display: flex; justify-content: flex-end; margin-top: 12px; }
+.button-danger { color: #c94b5b; border: 1px solid #f1c8ce; background: #fff4f5; }
+.button-danger:hover { color: #a93646; background: #ffe8eb; }
 .phase-summary { display: grid; grid-template-columns: 1.2fr repeat(4, 1fr); gap: 12px; margin: 20px 0; }
 .phase-total, .phase-card { padding: 18px; border: 1px solid #e8edf5; border-radius: 12px; background: #fff; }
 .phase-total strong { display: block; color: #2f6cf6; font-size: 30px; }
