@@ -76,6 +76,8 @@ h1 span { color: #2f6cf6; }
 .phase-task-row strong { font-size: 12px; }.phase-task-row small { margin-top: 4px; color: #8793a9; font-size: 10px; line-height: 1.4; }
 .phase-task-row select { width: 100%; padding: 8px; border: 1px solid #dfe5ef; border-radius: 7px; color: #718098; background: #fff; font: inherit; font-size: 10px; }
 .team-member-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 10px 0; border-top: 1px solid #edf0f5; }
+.team-member-roles { display: flex; gap: 8px; }
+.team-member-roles select { min-width: 220px; }
 .team-member-row select { min-width: 220px; padding: 8px; border: 1px solid #dfe5ef; border-radius: 7px; color: #718098; background: #fff; font: inherit; font-size: 11px; }
 @media (max-width: 1050px) { .phase-summary { grid-template-columns: repeat(2, 1fr); }.phase-total { grid-column: span 2; }.phase-task-list { grid-template-columns: 1fr; } }
 @media (max-width: 620px) { .phase-summary { grid-template-columns: 1fr; }.phase-total { grid-column: auto; }.phase-task-row { grid-template-columns: 1fr 1fr; }.phase-task-row > div { grid-column: span 2; } }
