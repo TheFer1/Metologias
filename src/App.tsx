@@ -76,7 +76,6 @@ function App() {
 function LandingPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [message, setMessage] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -87,24 +86,44 @@ function LandingPage() {
       return
     }
     setSubmitting(true)
-    const result = mode === 'login'
-      ? await supabase.auth.signInWithPassword({ email, password })
-      : await supabase.auth.signUp({ email, password })
+    const result = await supabase.auth.signInWithPassword({ email, password })
     setSubmitting(false)
     setMessage(result.error
       ? result.error.message
-      : mode === 'login'
-        ? 'Sesión iniciada. Cargando tu espacio...'
-        : 'Cuenta creada. Ya puedes entrar a tu espacio.')
+      : 'Sesión iniciada. Cargando tu espacio...')
   }
 
   return (
-    <main className="app-shell landing">
-      <nav className="topbar"><a className="brand" href="/login"><span className="brand-mark"><Rocket size={18} /></span><span>XP<span className="brand-accent">Flow</span></span></a><span className="status-pill"><span className="status-dot" /> colaboración en equipo</span></nav>
-      <section className="hero"><div className="hero-copy"><p className="eyebrow">Gestión de proyectos · Extreme Programming</p><h1>Construye mejor.<br /><span>Juntos.</span></h1><p className="hero-lead">El espacio colaborativo para convertir historias de usuario en software entregable, con el ritmo y la transparencia de XP.</p><div className="hero-actions"><a className="button button-primary" href="#access">Comenzar ahora <Zap size={17} /></a><a className="button button-quiet" href="#features">Conocer la plataforma</a></div><div className="trust-row"><ShieldCheck size={16} /><span>Datos protegidos con Supabase Row Level Security</span></div></div><Preview /></section>
-      <section id="features" className="features"><Feature icon={<LayoutDashboard size={20} />} title="Todo en un lugar" text="Backlog, iteraciones, tareas y métricas conectadas." /><Feature icon={<Users size={20} />} title="Equipo sincronizado" text="Colaboración en tiempo real para avanzar sin bloqueos." /><Feature icon={<ShieldCheck size={20} />} title="Seguro por diseño" text="Autenticación y permisos respaldados por Supabase." /></section>
-      <section id="access" className="access-card"><div><p className="eyebrow">Tu siguiente iteración empieza aquí</p><h2>{mode === 'login' ? 'Accede a tu espacio' : 'Crea tu cuenta'}</h2><p>Usa tus credenciales para entrar al espacio de trabajo.</p></div><form onSubmit={handleSignIn} className="access-form"><div className="auth-tabs"><button type="button" className={mode === 'login' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setMode('login'); setMessage('') }}>Iniciar sesión</button><button type="button" className={mode === 'signup' ? 'auth-tab active' : 'auth-tab'} onClick={() => { setMode('signup'); setMessage('') }}>Crear cuenta</button></div><label htmlFor="email">Correo electrónico</label><input id="email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="tu@equipo.com" /><label htmlFor="password">Contraseña</label><input id="password" type="password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Mínimo 6 caracteres" /><button className="button button-primary auth-submit" disabled={submitting}><LogIn size={16} />{submitting ? 'Procesando...' : mode === 'login' ? 'Iniciar sesión' : 'Crear cuenta'}</button>{message && <p className="form-message" role="status">{message}</p>}{!isSupabaseConfigured && <p className="setup-note">Falta configurar <code>.env.local</code>.</p>}</form></section>
-      <footer><span>XPFlow · Plataforma colaborativa para equipos ágiles</span><span>Construido con React + Supabase</span></footer>
+    <main className="login-page">
+      <nav className="login-topbar">
+        <a className="brand" href="/login">
+          <span className="brand-mark"><Rocket size={18} /></span>
+          <span>XP<span className="brand-accent">Flow</span></span>
+        </a>
+      </nav>
+      <section className="login-container" aria-labelledby="login-title">
+        <div className="login-card">
+          <div className="login-heading">
+            <span className="login-icon"><LogIn size={21} /></span>
+            <p className="eyebrow">Acceso al workspace</p>
+            <h1 id="login-title">Iniciar sesión</h1>
+            <p>Ingresa tus credenciales para continuar.</p>
+          </div>
+          <form onSubmit={handleSignIn} className="login-form">
+            <label htmlFor="email">Correo electrónico</label>
+            <input id="email" type="email" required autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="tu@equipo.com" />
+            <label htmlFor="password">Contraseña</label>
+            <input id="password" type="password" required minLength={6} autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Ingresa tu contraseña" />
+            <button className="button button-primary login-submit" disabled={submitting}>
+              <LogIn size={16} />
+              {submitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
+            </button>
+            {message && <p className={message.includes('iniciada') ? 'form-message' : 'login-error'} role="status">{message}</p>}
+            {!isSupabaseConfigured && <p className="setup-note">Falta configurar <code>.env.local</code>.</p>}
+          </form>
+          <div className="login-security"><ShieldCheck size={14} /><span>Acceso protegido por Supabase</span></div>
+        </div>
+      </section>
     </main>
   )
 }
@@ -661,7 +680,5 @@ function CrudModule({ title, description, table, fields }: { title: string; desc
 function Notice({ message }: { message: string }) { return <div className="notice"><ShieldCheck size={16} />{message}</div> }
 function EmptyState({ title, text, link }: { title: string; text: string; link: string }) { return <div className="empty-state"><FolderKanban size={23} /><h3>{title}</h3><p>{text}</p>{link !== '#' && <a className="button button-primary" href={link}><Plus size={15} /> Crear ahora</a>}</div> }
 function Stat({ label, value, icon, tone }: { label: string; value: number; icon: ReactNode; tone: string }) { return <div className="stat-card"><span className={`stat-icon ${tone}`}>{icon}</span><div><small>{label}</small><strong>{value}</strong></div></div> }
-function Preview() { return <div className="workspace-preview"><div className="preview-header"><span className="preview-title">Mi espacio de trabajo</span><span className="preview-online">● En línea</span></div><div className="preview-stats"><div><small>Proyectos activos</small><strong>04</strong></div><div><small>Historias completadas</small><strong>68%</strong></div><div><small>Equipo conectado</small><strong>12</strong></div></div><div className="preview-board"><div className="board-column"><div className="column-title"><span className="column-dot dot-blue" />Por hacer <b>3</b></div></div><div className="board-column"><div className="column-title"><span className="column-dot dot-yellow" />En progreso <b>2</b></div></div><div className="board-column"><div className="column-title"><span className="column-dot dot-green" />Completado <b>5</b></div></div></div></div> }
-function Feature({ icon, title, text }: { icon: ReactNode; title: string; text: string }) { return <article className="feature"><span className="feature-icon">{icon}</span><div><h3>{title}</h3><p>{text}</p></div></article> }
 
 export default App
